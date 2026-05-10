@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"time"
 )
 
@@ -46,7 +47,14 @@ func (g *GTA1Resolver) Resolve(ctx context.Context, locate string, screenshot []
 		return Coordinates{}, fmt.Errorf("write instruction field: %w", err)
 	}
 
-	part, err := writer.CreateFormFile("image_file", "screenshot.png")
+	contentType, filename := "image/png", "screenshot.png"
+	if len(screenshot) >= 2 && screenshot[0] == 0xFF && screenshot[1] == 0xD8 {
+		contentType, filename = "image/jpeg", "screenshot.jpg"
+	}
+	partHeader := make(textproto.MIMEHeader)
+	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image_file"; filename="%s"`, filename))
+	partHeader.Set("Content-Type", contentType)
+	part, err := writer.CreatePart(partHeader)
 	if err != nil {
 		return Coordinates{}, fmt.Errorf("create image field: %w", err)
 	}
